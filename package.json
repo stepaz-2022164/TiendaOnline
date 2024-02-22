@@ -8,7 +8,7 @@
     "dev": "nodemon index.js"
   },
   "author": "Sergio Eduardo Tepaz Vela",
-  "license": "MIT",
+  "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
