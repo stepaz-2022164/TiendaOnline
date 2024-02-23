@@ -2,6 +2,7 @@ import express from 'express'
 import {config} from 'dotenv'
 import userRoutes from '../src/user/user.routes.js'
 import categoryRoutes from '../src/category/category.routes.js'
+import productRoutes from '../src/product/product.routes.js'
 
 const app = express()
 config()
@@ -12,6 +13,7 @@ app.use(express.json())
 
 app.use('/user', userRoutes)
 app.use('/category', categoryRoutes)
+app.use('/product', productRoutes)
 
 export const initServer = () => {
     app.listen(port)
