@@ -1,8 +1,8 @@
 'use strict'
 
 import express from 'express'
-import { register, login, update, deleteU } from './user.controller.js'
-import { validateToken } from '../middlewares/validate-jwt.js'
+import { register, login, update, deleteU, registerAdmin, updateAdmin, deleteAdmin } from './user.controller.js'
+import { validateToken, isAdmin } from '../middlewares/validate-jwt.js'
 
 const api = express.Router()
 
@@ -10,8 +10,13 @@ const api = express.Router()
 api.post('/register', register)
 api.post('/login', login)
 
-//Rutas para usuarios existentes
+//Rutas para clientes
 api.put('/update',[validateToken] ,update)
 api.delete('/delete', [validateToken], deleteU)
+
+//Rutas para administradores
+api.post('/registerAdmin', [validateToken, isAdmin], registerAdmin)
+api.put('/updateAdmin/:id', [validateToken, isAdmin], updateAdmin)
+api.delete('/deleteAdmin/:id', [validateToken, isAdmin], deleteAdmin)
 
 export default api

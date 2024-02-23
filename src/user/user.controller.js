@@ -8,6 +8,7 @@ export const test = async (req, res) => {
     return res.send('Hello World')
 }
 
+// ---------------------------------------------------------------- CLIENTE ----------------------------------------------------------------
 export const register = async (req, res) => {
     try {
         let data = req.body
@@ -81,3 +82,83 @@ export const deleteU = async (req, res) => {
         return res.status(500).send({ message: 'Error deleting user' })
     }
 }
+
+// ---------------------------------------------------------------- ADMIN ----------------------------------------------------------------
+export const defaultAdmin = async (name, surname, username, password, email, phone) => {
+    try {
+        let existingAdmin = await User.findOne({role: 'ADMIN'})
+
+        if(!existingAdmin) {
+            let data = {
+                name: name,
+                surname: surname,
+                username: username,
+                password: await encrypt(password),
+                email: email,
+                phone: phone,
+                role: 'ADMIN',
+                totalCart: 0
+            }
+            let user = new User(data)
+            await user.save()
+            return console.log('Admin by default created')  
+        } else {
+            return console.log('Admin by default already exist')
+        }
+    } catch (error) {
+        console.error(error)
+    }
+}
+
+export const registerAdmin = async (req, res) => {
+    try {
+        let data = req.body
+        data.totalCart = 0
+        data.password = await encrypt(data.password)
+        let existUser = await User.findOne({username: data.username})
+        if(existUser) return res.status(400).send({message: 'User already exist'})
+        let user = new User(data)
+        await user.save()
+        return res.send({ message: 'User created succesfully' })
+    } catch (error) {
+        console.error(error)
+        return res.status(500).send({ message: 'Error registering' })
+    }
+}
+
+export const updateAdmin = async (req, res) => {
+    try {
+        let data = req.body
+        let updateUser = req.params.id
+        let userId = req.user._id
+        let existingUser = await User.findOne({_id: updateUser})
+        let update = checkUpdate(data, updateUser)
+        if(!update) return res.status(400).send({ message: 'Can not update some data or missing data' })
+        if((existingUser.role == 'ADMIN') && (updateUser != userId)) return res.status(400).send({ message: 'You can not update another admin'})
+        let updatedUser = await User.findOneAndUpdate(  
+            {_id: updateUser},
+            data, 
+            {new: true}
+        )
+        if(!updatedUser) return res.status(401).send({ message: 'User not found and not updated' })
+        return res.send({ message: 'User updated succesfully', updatedUser })
+    } catch (error) { 
+        console.error(error)
+        return res.status(500).send({ message: 'Error updating user' })
+    }
+}
+
+export const deleteAdmin = async (req, res) => {
+    try {
+        let eliminateUser = req.params.id 
+        let userId = req.user._id
+        let existingUser = await User.findOne({_id: eliminateUser})
+        if((existingUser.role === 'ADMIN') && (userId != eliminateUser)) return res.status(400).send({ message: 'You can not delete another admin'})
+        let deleteUser = await User.findOneAndDelete({_id: eliminateUser})
+        if(!deleteUser) return res.status(401).send({ message: 'User not found and not deleted' })
+        return res.send({ message: 'User deleted succesfully' })
+    } catch (error) {
+        console.error(error)
+        return res.status(500).send({ message: 'Error deleting user' })
+    }
+} 
