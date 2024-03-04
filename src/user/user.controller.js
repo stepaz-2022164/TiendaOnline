@@ -15,7 +15,12 @@ export const register = async (req, res) => {
         data.totalCart = 0
         data.password = await encrypt(data.password)
         data.role = 'CLIENT'
-        let existUser = await User.findOne({username: data.username})
+        let existUser = await User.findOne({
+            $or: [
+                {username: data.username},
+                {email: data.email}
+            ]
+        })
         if(existUser) return res.status(400).send({message: 'User already exist'})
         let user = new User(data)
         await user.save()
@@ -28,8 +33,13 @@ export const register = async (req, res) => {
 
 export const login = async(req, res) => {
     try {
-        let {username, password} = req.body
-        let user = await User.findOne({username})
+        let {username, password, email} = req.body
+        let user = await User.findOne({
+            $or: [
+                {username: username},
+                {email: email}
+            ]
+        })
         if(user && await checkPassword(password, user.password)){
             let loggedUser = {
                 uid: user._id,
@@ -55,11 +65,13 @@ export const login = async(req, res) => {
 export const update = async (req, res) => {
     try {
         let data = req.body
-        let userId = req.user._id
-        let update = checkUpdate(data, userId)
+        let userIdU = req.params.id
+        let userIdL = req.user._id
+        if (userIdL.toString() !== userIdU.toString()) return res.status(404).send({ message: 'You only can update your user'})
+        let update = checkUpdate(data, userIdU)
         if(!update) return res.status(400).send({ message: 'Can not update some data or missing data' })
         let updatedUser = await User.findOneAndUpdate(  
-            {_id: userId},
+            {_id: userIdU},
             data,
             {new: true}
         )
@@ -68,6 +80,33 @@ export const update = async (req, res) => {
     } catch (error) {
         console.error(error)
         return res.status(500).send({ message: 'Error updating user' })
+    }
+}
+
+export const updatePassword = async (req, res) => {
+    try {
+        let data = req.body
+        let userIdU = req.params.id
+        let userIdL = req.user._id
+        let user = await User.findOne({ _id: userIdU })
+        let password = data.password
+        if (userIdL.toString() !== userIdU.toString()) return res.status(404).send({ message: 'You only can update your user'})
+        if (user && await checkPassword(password, user.password)) {
+            if (data.passwordNew) data.passwordNew = await encrypt(data.passwordNew)
+            let update = checkUpdate(data, userIdU)
+            if (!update) return res.status(400).send({ message: 'Can not update because missing data' })
+            let updatedUser = await User.findOneAndUpdate(
+                { _id: userIdU },
+                { password: data.passwordNew },
+                { new: true }
+            )
+            if (!updatedUser) return res.status(401).send({ message: 'User not found and not updated' })
+            return res.send({ message: 'User password updated succesfully'})
+        }
+        return res.status(404).send({ message: 'Password is not correct' })
+    } catch (error) {
+        console.error(error)
+        return res.status(500).send({ message: 'Error updating password' })
     }
 }
 
@@ -115,7 +154,12 @@ export const registerAdmin = async (req, res) => {
         let data = req.body
         data.totalCart = 0
         data.password = await encrypt(data.password)
-        let existUser = await User.findOne({username: data.username})
+        let existUser = await User.findOne({
+            $or: [
+                {username: data.username},
+                {email: data.email}
+            ]
+        })
         if(existUser) return res.status(400).send({message: 'User already exist'})
         let user = new User(data)
         await user.save()
@@ -132,8 +176,6 @@ export const updateAdmin = async (req, res) => {
         let updateUser = req.params.id
         let userId = req.user._id
         let existingUser = await User.findOne({_id: updateUser})
-        let update = checkUpdate(data, updateUser)
-        if(!update) return res.status(400).send({ message: 'Can not update some data or missing data' })
         if((existingUser.role == 'ADMIN') && (updateUser != userId)) return res.status(400).send({ message: 'You can not update another admin'})
         let updatedUser = await User.findOneAndUpdate(  
             {_id: updateUser},
@@ -145,6 +187,31 @@ export const updateAdmin = async (req, res) => {
     } catch (error) { 
         console.error(error)
         return res.status(500).send({ message: 'Error updating user' })
+    }
+}
+
+export const updatePasswordAdmin = async (req, res) => {
+    try {
+        let data = req.body
+        let updateUser = req.params.id
+        let userId = req.user._id
+        let existingUser = await User.findOne({_id: updateUser})
+        let password = data.password
+        if((existingUser.role == 'ADMIN') && (updateUser != userId)) return res.status(400).send({ message: 'You can not update another admin'})
+        if (existingUser && await checkPassword(password, existingUser.password)) {
+            if (data.passwordNew) data.passwordNew = await encrypt(data.passwordNew)
+            let updatedUser = await User.findOneAndUpdate(
+                { _id: userId },
+                { password: data.passwordNew },
+                { new: true }
+            )
+            if (!updatedUser) return res.status(401).send({ message: 'User not found and not updated' })
+            return res.send({ message: 'User password updated succesfully'})
+        }
+        return res.status(404).send({ message: 'Password is not correct' })
+    } catch (error) {
+        console.error(error)
+        return res.status(500).send({ message: 'Error updating password' })
     }
 }
 
@@ -161,4 +228,4 @@ export const deleteAdmin = async (req, res) => {
         console.error(error)
         return res.status(500).send({ message: 'Error deleting user' })
     }
-} 
+}

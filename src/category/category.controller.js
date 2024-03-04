@@ -2,7 +2,7 @@
 
 import Category from './category.model.js'
 
-export const categoryDefault = async() => {
+export const defaultCategory = async() => {
     try {
         let category = {
             name: 'Default',
@@ -45,6 +45,8 @@ export const updateCategory = async(req, res) => {
     try {
         let data = req.body
         let categoryId = req.params.id
+        let defaultCategory = await Category.findOne({name: 'Default'})
+        if(defaultCategory._id == categoryId) return res.send({message: 'Default category can not be updateded'})
         let updatedCategory = await Category.findOneAndUpdate(
             {_id: categoryId},
             data,
