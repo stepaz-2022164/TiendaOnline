@@ -12,6 +12,7 @@ export const defaultCategory = async() => {
         if(existingCategory) return console.log('Default category already exists')
         let defaultCategory = new Category(category)
         await defaultCategory.save()
+        return console.log('Default category created') 
     } catch (error) {
         return console.error(error)
     }
@@ -63,9 +64,16 @@ export const updateCategory = async(req, res) => {
 export const deleteCategory = async(req, res) => {
     try {
         let categoryId = req.params.id
+        let defaultCategory = await Category.findOne({name: 'Default'})
+        if(defaultCategory) return res.status(401).send({message: 'Default category can not be deleted'})
+        /*
+        await Product.updateMany(
+            {category: categoryId},
+            {category: defaultCategory._id}    
+        )*/
         let deletedCategory = await Category.findOneAndDelete({_id: categoryId})
         if(!deletedCategory) return res.status(404).send({message: 'Category not found and not deleted'})
-        return res.send({message: 'Category deleted successfully', deletedCategory})
+        return res.send({message: 'Category deleted successfully'})
     } catch (error) {
         console.error(error)
         return res.status(500).send({message: 'Error deleting category'})

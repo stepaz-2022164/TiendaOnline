@@ -8,6 +8,10 @@ const billSchema = Schema({
         ref: 'user',
         required: true
     },
+    NIT: {
+        type: String,
+        required: true
+    },
     products: {
         type: [{
             product:{
@@ -24,7 +28,6 @@ const billSchema = Schema({
     },
     date: {
         type: Date,
-        default: Date.now,
         required: true
     },
     amount: {

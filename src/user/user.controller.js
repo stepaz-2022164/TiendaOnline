@@ -1,6 +1,8 @@
 'use strict'
 
 import User from './user.model.js'
+import Product from '../product/product.model.js'
+import Bill from '../bill/bill.model.js'
 import { encrypt, checkPassword, checkUpdate } from '../utils/validator.js'
 import { createToken } from '../utils/jwt.js'
 
@@ -49,10 +51,12 @@ export const login = async(req, res) => {
                 role: user.role
             }
             let token = await createToken(loggedUser)
+            let myBills = await Bill.find({user: user._id}).populate({path: 'user', select: 'username'}).populate({path: 'products.product', select: 'name'}).select('-_id -products._id')
             return res.send({
                 message: `Welcome ${user.name}`,
                 loggedUser,
-                token
+                token,
+                myBills
             })
         }
         return res.status(404).send({ message: 'Invalid credentials' })
@@ -112,8 +116,10 @@ export const updatePassword = async (req, res) => {
 
 export const deleteU = async (req, res) => {
     try {
-        let userId = req.user._id
-        let deleteUser = await User.findOneAndDelete({_id: userId})
+        let userIdL = req.user._id
+        let userIdD = req.params.id
+        if (userIdL.toString() !== userIdD.toString()) return res.status(404).send({ message: 'You only can delete your user'})
+        let deleteUser = await User.findOneAndDelete({_id: userIdD})
         if(!deleteUser) return res.status(401).send({ message: 'User not found and not deleted' })
         return res.send({ message: `User ${deleteUser.username} deleted succesfully` })
     } catch (error) {
@@ -122,19 +128,65 @@ export const deleteU = async (req, res) => {
     }
 }
 
+export const buyProducts = async (req, res) => {
+    try {
+        let data = req.body
+        let userId = req.user._id
+        let existingUser = await User.findOne({_id: userId})
+        let shoppingCart = existingUser.shoppingCart
+        for(let productCart of shoppingCart) {
+            let existingStock = await Product.findOne({_id: productCart.product})
+            if(existingStock.stock < productCart.quantity) return res.status(400).send({ message: `Not enough stock for the product ${productCart.product}` })
+        }
+        for (let productCart of shoppingCart) {
+            let product = await Product.findOne({_id: productCart.product})
+            let stock = product.stock - productCart.quantity
+            let updateStock = await Product.findOneAndUpdate(
+                {_id: productCart.product},
+                {stock: stock})
+        }
+        let billData = {
+            user: userId,
+            NIT: data.NIT,
+            products: existingUser.shoppingCart,
+            date: Date.now(),
+            amount: existingUser.totalCart
+        }   
+        let bill = new Bill(billData)
+        let newBill = await bill.save()
+        let userBill = await Bill.findOne({_id: newBill._id}).populate({path: 'user', select: 'username'}).populate({path: 'products.product', select: 'name'}).select('-_id -products._id')
+        let clearTotalCart = 0
+        let emptyCart = []
+        await User.findOneAndUpdate(
+            {_id: userId},
+            {totalCart: clearTotalCart, shoppingCart: emptyCart},
+            {new: true})
+        let product = await Product.findOne(userBill.products.product)
+        let newSales = product.sales + userBill.products.quantity
+        console.log(newSales)
+        await Product.findOneAndUpdate(
+            {_id: userBill.products.product},
+            {sales: newSales}
+        )
+        return res.send({ message: 'Products bought succesfully', userBill })
+    } catch (error) {
+        console.error(error)
+        return res.status(500).send({ message: 'Error buying products' })
+    }
+}
+
 // ---------------------------------------------------------------- ADMIN ----------------------------------------------------------------
-export const defaultAdmin = async (name, surname, username, password, email, phone) => {
+export const defaultAdmin = async () => {
     try {
         let existingAdmin = await User.findOne({role: 'ADMIN'})
-
         if(!existingAdmin) {
             let data = {
-                name: name,
-                surname: surname,
-                username: username,
-                password: await encrypt(password),
-                email: email,
-                phone: phone,
+                name: 'Sergio',
+                surname: 'Tepaz',
+                username: 'stepaz',
+                password: await encrypt('12345'),
+                email: 'stepaz@kinal.edu.gt',
+                phone: '87654321',
                 role: 'ADMIN',
                 totalCart: 0
             }
@@ -223,7 +275,7 @@ export const deleteAdmin = async (req, res) => {
         if((existingUser.role === 'ADMIN') && (userId != eliminateUser)) return res.status(400).send({ message: 'You can not delete another admin'})
         let deleteUser = await User.findOneAndDelete({_id: eliminateUser})
         if(!deleteUser) return res.status(401).send({ message: 'User not found and not deleted' })
-        return res.send({ message: 'User deleted succesfully' })
+        return res.send({ message: `User ${existingUser.username} deleted succesfully` })
     } catch (error) {
         console.error(error)
         return res.status(500).send({ message: 'Error deleting user' })
