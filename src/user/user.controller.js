@@ -118,10 +118,15 @@ export const deleteU = async (req, res) => {
     try {
         let userIdL = req.user._id
         let userIdD = req.params.id
-        if (userIdL.toString() !== userIdD.toString()) return res.status(404).send({ message: 'You only can delete your user'})
-        let deleteUser = await User.findOneAndDelete({_id: userIdD})
-        if(!deleteUser) return res.status(401).send({ message: 'User not found and not deleted' })
-        return res.send({ message: `User ${deleteUser.username} deleted succesfully` })
+        let user = await User.findOne({_id: userIdD})
+        let {password} = req.body
+        if (user && await checkPassword(password, user.password)) {
+            if (userIdL.toString() !== userIdD.toString()) return res.status(404).send({ message: 'You only can delete your user'})
+            let deleteUser = await User.findOneAndDelete({_id: userIdD})
+            if(!deleteUser) return res.status(401).send({ message: 'User not found and not deleted' })
+            return res.send({ message: `User ${deleteUser.username} deleted succesfully` })
+        }
+        return res.status(404).send({ message: 'Password is not correct' })
     } catch (error) {
         console.error(error)
         return res.status(500).send({ message: 'Error deleting user' })
@@ -161,13 +166,15 @@ export const buyProducts = async (req, res) => {
             {_id: userId},
             {totalCart: clearTotalCart, shoppingCart: emptyCart},
             {new: true})
-        let product = await Product.findOne(userBill.products.product)
-        let newSales = product.sales + userBill.products.quantity
-        console.log(newSales)
-        await Product.findOneAndUpdate(
-            {_id: userBill.products.product},
-            {sales: newSales}
-        )
+        let productsBill = userBill.products
+        for (let productSales of productsBill){
+            let product = await Product.findOne({_id: productSales.product})
+            let sales = product.sales + productSales.quantity
+            let updateSales = await Product.findOneAndUpdate(
+                {_id: productSales.product},
+                {sales: sales}
+            )
+        }
         return res.send({ message: 'Products bought succesfully', userBill })
     } catch (error) {
         console.error(error)

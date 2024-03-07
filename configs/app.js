@@ -3,6 +3,7 @@ import {config} from 'dotenv'
 import userRoutes from '../src/user/user.routes.js'
 import categoryRoutes from '../src/category/category.routes.js'
 import productRoutes from '../src/product/product.routes.js'
+import billRoutes from '../src/bill/bill.routes.js'
 import { defaultAdmin } from '../src/user/user.controller.js'
 import { defaultCategory } from '../src/category/category.controller.js'
 
@@ -16,6 +17,7 @@ app.use(express.json())
 app.use('/user', userRoutes)
 app.use('/category', categoryRoutes)
 app.use('/product', productRoutes)
+app.use('/bill', billRoutes)
 
 export const initServer = () => {
     defaultCategory()
