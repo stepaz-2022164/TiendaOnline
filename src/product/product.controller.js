@@ -99,16 +99,17 @@ export const getProductsByCategory = async (req, res) => {
         return res.send({message: 'Products founded:', products})
     } catch (error) {
         console.error(error)
-        return res.status(500).send({message: 'Error getting products'})
+        return res.status(500).send({message: 'Error getting products'}) 
     }
 }
 
 export const getProductByName = async (req, res) => {
     try {
         let {name} = req.body
-        let product = await Product.find({name: name}).populate('category', ['name'])
-        if (!product || product.length == 0) return res.status(404).send({message: 'Product not found'})
-        return res.send({message: 'Product founded:', product})
+        let coincidence = new RegExp(name.trim(), 'i')
+        let products = await Product.find({name: coincidence}).populate('category', ['name'])
+        if (!products || products.length == 0) return res.status(404).send({message: 'Product not found'})
+        return res.send({message: 'Product founded:', products})
     } catch (error) {
         console.error(error)
         return res.status(500).send({message: 'Error getting product'})
