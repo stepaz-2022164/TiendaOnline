@@ -54,17 +54,6 @@ export const deleteProduct = async (req, res) => {
     }
 }
 
-export const getProductsSoldOut = async (req, res) => {
-    try {
-        let products = await Product.find({stock: 0}).populate('category', ['name'])
-        if (!products) return res.status(404).send({message: 'Products not found'})
-        return res.send({message: 'Products founded:', products})
-    } catch (error) {
-        console.error(error)
-        return res.status(500).send({message: 'Error getting products'})
-    }
-}
-
 export const getProduct = async (req, res) => {
     try {
         let productId = req.params.id
@@ -74,6 +63,17 @@ export const getProduct = async (req, res) => {
     } catch (error) {
         console.error(error)
         return res.status(500).send({message: 'Error getting product'})
+    }
+}
+
+export const getProductsSoldOut = async (req, res) => {
+    try {
+        let products = await Product.find({stock: 0}).populate('category', ['name'])
+        if (!products || products.length == 0) return res.status(404).send({message: 'Products not found'})
+        return res.send({message: 'Products founded:', products})
+    } catch (error) {
+        console.error(error)
+        return res.status(500).send({message: 'Error getting products'})
     }
 }
 
@@ -107,7 +107,7 @@ export const getProductByName = async (req, res) => {
     try {
         let {name} = req.body
         let product = await Product.find({name: name}).populate('category', ['name'])
-        if (!product) return res.status(404).send({message: 'Product not found'})
+        if (!product || product.length == 0) return res.status(404).send({message: 'Product not found'})
         return res.send({message: 'Product founded:', product})
     } catch (error) {
         console.error(error)

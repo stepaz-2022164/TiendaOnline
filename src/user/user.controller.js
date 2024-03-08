@@ -5,6 +5,7 @@ import Product from '../product/product.model.js'
 import Bill from '../bill/bill.model.js'
 import { encrypt, checkPassword, checkUpdate } from '../utils/validator.js'
 import { createToken } from '../utils/jwt.js'
+import { generateBill } from '../bill/bill.controller.js'
 
 export const test = async (req, res) => {
     return res.send('Hello World')
@@ -51,7 +52,7 @@ export const login = async(req, res) => {
                 role: user.role
             }
             let token = await createToken(loggedUser)
-            let myBills = await Bill.find({user: user._id}).populate({path: 'user', select: 'username'}).populate({path: 'products.product', select: 'name'}).select('-_id -products._id')
+            let myBills = await Bill.find({user: user._id, state: true}).populate({path: 'user', select: 'username'}).populate({path: 'products.product', select: 'name'}).select('-_id -products._id')
             return res.send({
                 message: `Welcome ${user.name}`,
                 loggedUser,
@@ -119,6 +120,7 @@ export const deleteU = async (req, res) => {
         let userIdL = req.user._id
         let userIdD = req.params.id
         let user = await User.findOne({_id: userIdD})
+        if (!user) return res.status(401).send({ message: 'User not found' })
         let {password} = req.body
         if (user && await checkPassword(password, user.password)) {
             if (userIdL.toString() !== userIdD.toString()) return res.status(404).send({ message: 'You only can delete your user'})
@@ -156,10 +158,11 @@ export const buyProducts = async (req, res) => {
             products: existingUser.shoppingCart,
             date: Date.now(),
             amount: existingUser.totalCart
-        }   
+        }
+        if (billData.products.length == 0) return res.status(404).send({ message:'You need add products to shopping cart'})
         let bill = new Bill(billData)
         let newBill = await bill.save()
-        let userBill = await Bill.findOne({_id: newBill._id}).populate({path: 'user', select: 'username'}).populate({path: 'products.product', select: 'name'}).select('-_id -products._id')
+        let userBill = await Bill.findOne({_id: newBill._id}).populate({path: 'user', select: ['username', 'name' , 'email']}).populate({path: 'products.product', select: 'name'}).select('-_id -products._id')
         let clearTotalCart = 0
         let emptyCart = []
         await User.findOneAndUpdate(
@@ -236,6 +239,7 @@ export const updateAdmin = async (req, res) => {
         let userId = req.user._id
         let existingUser = await User.findOne({_id: updateUser})
         if((existingUser.role == 'ADMIN') && (updateUser != userId)) return res.status(400).send({ message: 'You can not update another admin'})
+        if (data.password) await encrypt(data.password)
         let updatedUser = await User.findOneAndUpdate(  
             {_id: updateUser},
             data, 

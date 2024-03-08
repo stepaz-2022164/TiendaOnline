@@ -33,6 +33,10 @@ const billSchema = Schema({
     amount: {
         type: Number,
         required: true
+    },
+    state: {
+        type: Boolean,
+        default: true
     }
 })
 

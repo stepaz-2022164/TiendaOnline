@@ -26,7 +26,7 @@ const productSchema = Schema({
     },
     sales: {
         type: Number,
-        required: true
+        default: 0
     }
 })
 
